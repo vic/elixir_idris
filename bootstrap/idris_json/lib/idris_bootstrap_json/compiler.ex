@@ -7,17 +7,35 @@ defmodule IdrisBootstrap.Json.Compiler do
   @idris_kernel Module.concat(@idris_ns, Kernel)
   def compile(json = idris_json(), _opts) do
     simple_decls(sdecls) = json
-    sdecls |> Enum.each(&compile_sdecl/1)
+    sdecls
+    |> Flow.from_enumerable()
+    |> Flow.partition(key: &sdecl_module/1)
+    |> Flow.reduce(fn -> %{} end, &sdecl_module_reducer(&1, &2))
+    |> Flow.map(&module_compile(&1))
+    |> Flow.run
+  end
+
+  defp module_compile({module, defs}) do
+    code = quote do
+      defmodule unquote(module) do
+        unquote_splicing(defs)
+      end
+    end
+    IO.puts(Macro.to_string(code))
+    code
+  end
+
+  defp sdecl_module_reducer(sdecl, modules) do
+    {{module, _f, _a}, ast} = compile_sdecl(sdecl)
+    Map.update(modules, module, [ast], fn xs -> [ast | xs] end)
+  end
+
+  defp sdecl_module(sfun(sname, _fsize, _, _body)) do
+    {module, _fname} = sname_to_module_fname(sname)
+    module
   end
 
   defp compile_sdecl(sfun(sname, fsize, _, body)) do
-    # TODO: we should have a single process per module
-    # if we find a new function for him, that process
-    # should be responsible for collecting its functions
-    # At the end, we should send all those processes
-    # an exit signal so they can compile their code
-    # in maybe using elixir's parallel compiler
-
     {module, fname} = sname_to_module_fname(sname)
     vars = generate_vars(fsize, module)
     {expr, vars, _module} = compile_sexp(body, vars, module)
@@ -25,15 +43,12 @@ defmodule IdrisBootstrap.Json.Compiler do
     vars = underscore_unused(vars, expr)
 
     code = quote do
-      @module unquote(module)
       def unquote(fname)(unquote_splicing(vars)) do
         unquote(expr)
       end
     end
 
-    IO.puts(Macro.to_string(code))
-
-    {vars, code}
+    {{module, fname, length(vars)}, code}
   end
 
   defp compile_sexp(snothing(), vars, module) do
