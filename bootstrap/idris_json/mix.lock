@@ -1,0 +1,4 @@
+%{
+  "expat": {:hex, :expat, "1.0.2", "ab105f0cca86fc091b26e392a2d9105adc756cd784e5927274b24fe74970d44b", [:mix], [], "hexpm"},
+  "jason": {:hex, :jason, "1.0.0", "0f7cfa9bdb23fed721ec05419bcee2b2c21a77e926bce0deda029b5adc716fe2", [:mix], [{:decimal, "~> 1.0", [hex: :decimal, repo: "hexpm", optional: true]}], "hexpm"},
+}
