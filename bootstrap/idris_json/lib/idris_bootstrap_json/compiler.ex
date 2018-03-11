@@ -5,13 +5,19 @@ defmodule IdrisBootstrap.Json.Compiler do
   @idris_ns IdrisBootstrap.Idris
   @idris_core Module.concat(@idris_ns, Core)
   @idris_kernel Module.concat(@idris_ns, Kernel)
-
   def compile(json = idris_json(), _opts) do
     simple_decls(sdecls) = json
-    sdecls |> Enum.map(&compile_sdecl/1)
+    sdecls |> Enum.each(&compile_sdecl/1)
   end
 
   defp compile_sdecl(sfun(sname, fsize, _, body)) do
+    # TODO: we should have a single process per module
+    # if we find a new function for him, that process
+    # should be responsible for collecting its functions
+    # At the end, we should send all those processes
+    # an exit signal so they can compile their code
+    # in maybe using elixir's parallel compiler
+
     {module, fname} = sname_to_module_fname(sname)
     vars = generate_vars(fsize, module)
     {expr, vars, _module} = compile_sexp(body, vars, module)
