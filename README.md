@@ -7,7 +7,11 @@ You just need latest idris installed.
 ```
 cd bootstrap/idris_json
 mix deps.get
-mix compile.idris_json test/examples/hello.idr
+mix compile
+
+mix compile.idris_json test/examples/hello.idr --output elixir
+
+mix help compile.idris_json
 ```
 
 ## Installation

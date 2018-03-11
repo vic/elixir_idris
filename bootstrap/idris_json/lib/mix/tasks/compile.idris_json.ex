@@ -2,14 +2,33 @@ defmodule Mix.Tasks.Compile.IdrisJson do
   use Mix.Task
 
   @shortdoc "Compile Idris -> JSON IR -> BEAM/Elixir"
-  @moduledoc ~S"""
+
+  @output_option_info ~s"""
+  Valid values are:
+
+  "elixir" - will print elixir code to stdout
+
+  "elixir:PATH" - will write a file per module in PATH
+
+  "beam:PATH" - will compile into beam bytecode in PATH
+  """
+
+  @moduledoc ~s"""
   #{@shortdoc}
 
   Usage: mix compile.idris_json [IDRIS_OPTIONS]
 
   ## IDRIS_OPTIONS
 
-  Those documented in `idris --help`
+     Those documented in `idris --help`
+
+  ## SPECIAL OPTIONS
+
+  `--idris EXECUTABLE` - Specify the idris compiler to use
+
+  `--output OUTPUT` - Specify where to place output
+    #{@output_option_info}
+
   """
 
   @idris_exec "idris"
@@ -158,6 +177,8 @@ defmodule Mix.Tasks.Compile.IdrisJson do
 
     Please specify one with the `--idris executable` option
     or update your PATH.
+
+    See `mix help compile.idris_json`
     """)
   end
 
@@ -167,6 +188,8 @@ defmodule Mix.Tasks.Compile.IdrisJson do
     Mix.raise("""
     You must specify at least one `.idr` source
     file to compile.
+
+    See `mix help compile.idris_json`
     """)
   end
 
@@ -177,7 +200,7 @@ defmodule Mix.Tasks.Compile.IdrisJson do
 
     case output do
       nil ->
-        [{"--output", "beam"}] ++ opts
+        [{"--output", "elixir"}] ++ opts
 
       _ ->
         raise_on_invalid_output(output)
@@ -189,13 +212,14 @@ defmodule Mix.Tasks.Compile.IdrisJson do
   defp output_opt({"--output", output}), do: output
   defp output_opt(_), do: nil
 
-  defp raise_on_invalid_output("beam"), do: nil
   defp raise_on_invalid_output("beam:" <> _), do: nil
   defp raise_on_invalid_output("elixir:" <> _), do: nil
 
   defp raise_on_invalid_output(output) do
     Mix.raise("""
     Invalid output type #{output}
+
+    #{@output_option_info}
     """)
   end
 

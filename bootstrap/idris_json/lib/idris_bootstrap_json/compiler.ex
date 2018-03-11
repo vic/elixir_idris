@@ -5,24 +5,51 @@ defmodule IdrisBootstrap.Json.Compiler do
   @idris_ns IdrisBootstrap.Idris
   @idris_core Module.concat(@idris_ns, Core)
   @idris_kernel Module.concat(@idris_ns, Kernel)
-  def compile(json = idris_json(), _opts) do
+
+  def compile(json = idris_json(), opts) do
     simple_decls(sdecls) = json
     sdecls
     |> Flow.from_enumerable()
     |> Flow.partition(key: &sdecl_module/1)
     |> Flow.reduce(fn -> %{} end, &sdecl_module_reducer(&1, &2))
-    |> Flow.map(&module_compile(&1))
+    |> Flow.map(&module_ast(&1))
+    |> Flow.map(&module_generate(&1, opts[:output], opts))
     |> Flow.run
   end
 
-  defp module_compile({module, defs}) do
+  defp module_generate({module, code}, "elixir", _opts) do
+    IO.puts(ast_to_elixir_source(code))
+    {module, nil}
+  end
+
+  defp module_generate({module, code}, "elixir:" <> path, _opts) do
+    file = Path.join(path, Macro.underscore(module)) <> ".ex"
+    File.mkdir_p!(Path.dirname(file))
+    source = ast_to_elixir_source(code)
+    File.write!(file, source)
+    {module, file}
+  end
+
+  defp module_generate(_, out, _opts) do
+    raise "Teach me to compile into #{out}"
+  end
+
+  defp ast_to_elixir_source(ast) do
+    ast
+    |> Macro.to_string
+    |> Code.format_string!
+  rescue
+    e ->
+      Macro.to_string(ast)
+  end
+
+  defp module_ast({module, defs}) do
     code = quote do
       defmodule unquote(module) do
         unquote_splicing(defs)
       end
     end
-    IO.puts(Macro.to_string(code))
-    code
+    {module, code}
   end
 
   defp sdecl_module_reducer(sdecl, modules) do
@@ -159,14 +186,22 @@ defmodule IdrisBootstrap.Json.Compiler do
     |> Enum.map(fn {_, i} -> loc_to_var(i, nil, module) end)
   end
 
+  defp sfname(name) do
+    name
+    |> String.replace(~r/^([A-Z])/, "c_\\1", global: false)
+    |> String.replace("{", "bl_")
+    |> String.replace("}", "_br")
+    |> String.to_atom
+  end
+
   defp sname_to_module_fname(sname) do
     sname
     |> String.split(".")
     |> case do
-         [name] -> {@idris_kernel, String.to_atom(name)}
+         [name] -> {@idris_kernel, sfname(name)}
          names ->
            [name | module] = Enum.reverse(names)
-           {Module.concat([@idris_ns] ++ Enum.reverse(module)), String.to_atom(name)}
+           {Module.concat([@idris_ns] ++ Enum.reverse(module)), sfname(name)}
        end
   end
 
