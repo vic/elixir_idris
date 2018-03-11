@@ -17,17 +17,21 @@ defmodule IdrisBootstrap.Json.Compiler do
     |> Flow.run
   end
 
+  defp write_elixir_module_in_path({module, code}, path) do
+    file = Path.join(path, Macro.underscore(module)) <> ".ex"
+    File.mkdir_p!(Path.dirname(file))
+    source = ast_to_elixir_source(code)
+    File.write!(file, source)
+    {module, file}
+  end
+
   defp module_generate({module, code}, "elixir", _opts) do
     IO.puts(ast_to_elixir_source(code))
     {module, nil}
   end
 
   defp module_generate({module, code}, "elixir:" <> path, _opts) do
-    file = Path.join(path, Macro.underscore(module)) <> ".ex"
-    File.mkdir_p!(Path.dirname(file))
-    source = ast_to_elixir_source(code)
-    File.write!(file, source)
-    {module, file}
+    write_elixir_module_in_path({module, code}, path)
   end
 
   defp module_generate(_, out, _opts) do
@@ -39,7 +43,7 @@ defmodule IdrisBootstrap.Json.Compiler do
     |> Macro.to_string
     |> Code.format_string!
   rescue
-    e ->
+    _ ->
       Macro.to_string(ast)
   end
 

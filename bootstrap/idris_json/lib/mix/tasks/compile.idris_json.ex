@@ -29,6 +29,25 @@ defmodule Mix.Tasks.Compile.IdrisJson do
   `--output OUTPUT` - Specify where to place output
     #{@output_option_info}
 
+
+  ## CONFIG
+
+  You can also configure this compiler in your `mix.exs`
+
+  ```elixir
+     def project() do
+       [
+        compilers: [:idris_json] ++ Mix.compilers,
+        idris_json: [
+          "--output", "elixir:" <> "lib",
+          "lib/main.idr"
+        ]
+       ]
+     end
+  ````
+
+  See the `example` app.
+
   """
 
   @idris_exec "idris"
@@ -41,10 +60,10 @@ defmodule Mix.Tasks.Compile.IdrisJson do
 
   @spec run(OptionParser.argv()) :: :ok | :no_return
   def run(args) do
-    {files, opts} = OptionParser.parse(args) |> files_and_opts
-    build(files, opts)
-    Mix.shell().info("mix compile.idris_json end")
-    :ok
+    config = Mix.Project.config()
+    idris_args = Keyword.get(config, :idris_bootstrap_json, [])
+    {files, opts} = OptionParser.parse(idris_args ++ args) |> files_and_opts
+    :ok = build(files, opts)
   end
 
   defp codegen_run(@codegen_name <> " " <> args) do
