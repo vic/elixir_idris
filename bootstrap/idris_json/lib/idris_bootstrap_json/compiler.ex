@@ -16,6 +16,8 @@ defmodule IdrisBootstrap.Json.Compiler do
     vars = generate_vars(fsize, module)
     {expr, vars, _module} = compile_sexp(body, vars, module)
 
+    vars = underscore_unused(vars, expr)
+
     code = quote do
       @module unquote(module)
       def unquote(fname)(unquote_splicing(vars)) do
@@ -44,7 +46,7 @@ defmodule IdrisBootstrap.Json.Compiler do
   defp compile_sexp(sop(lwritestr(), locs), vars, module) do
     args = locs_to_vars(locs, vars, module)
     code = quote do
-      unquote(@idris_core).puts(unquote_splicing(vars))
+      unquote(@idris_core).write_string(unquote_splicing(args))
     end
     {code, vars, module}
   end
@@ -108,6 +110,20 @@ defmodule IdrisBootstrap.Json.Compiler do
     {:"v#{index}", [index: index], module}
   end
 
+  # pipeable
+  defp let_in({var, expr, _in_expr = {a, b, [var | c]}}, vars, module) do
+    code = quote do
+      unquote(expr) |> unquote({a, b, c})
+    end
+    {code, vars, module}
+  end
+
+  # second arg inlineable
+  defp let_in({var, expr, _in_expr = {a, b, [c, var | d]}}, vars, module) do
+    code = {a, b, [c, expr | d]}
+    {code, vars, module}
+  end
+
   defp let_in({var, expr, in_expr}, vars, module) do
     code = quote do
       unquote(var) = unquote(expr)
@@ -131,6 +147,27 @@ defmodule IdrisBootstrap.Json.Compiler do
            [name | module] = Enum.reverse(names)
            {Module.concat([@idris_ns] ++ Enum.reverse(module)), String.to_atom(name)}
        end
+  end
+
+  defp underscore_unused(vars, expr) do
+    used = vars_in_expr(expr)
+    vars |> Enum.map(fn var = {a, b, c} ->
+      if var in used do
+        var
+      else
+        {:"_#{a}", b, c}
+      end
+    end)
+  end
+
+  defp vars_in_expr(expr) do
+    noop = fn x, y -> {x, y} end
+    Macro.traverse(expr, [], noop, fn
+      var = {a, [index: _], c}, acc when is_atom(a) and is_atom(c) ->
+        {var, [var] ++ acc}
+      x, y -> {x, y}
+    end)
+    |> elem(1)
   end
 
   import IdrisBootstrap.Json.Patterns, only: []

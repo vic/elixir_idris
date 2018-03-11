@@ -38,4 +38,5 @@ defmodule IdrisBootstrap.Json.Patterns do
 
   defpat sapp(%{"SApp" => [flag, name, args]})
   defpat sv(%{"SV" => loc})
+
 end
