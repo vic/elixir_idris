@@ -61,7 +61,7 @@ defmodule Mix.Tasks.Compile.IdrisJson do
   @spec run(OptionParser.argv()) :: :ok | :no_return
   def run(args) do
     config = Mix.Project.config()
-    idris_args = Keyword.get(config, :idris_bootstrap_json, [])
+    idris_args = Keyword.get(config, :idris_json, [])
     {files, opts} = OptionParser.parse(idris_args ++ args) |> files_and_opts
     :ok = build(files, opts)
   end

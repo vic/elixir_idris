@@ -37,6 +37,7 @@ Usage: mix compile.idris_json [IDRIS_OPTIONS]
 You can also configure this compiler in your `mix.exs`
 
 ```elixir
+
    def project() do
      [
       compilers: [:idris_json] ++ Mix.compilers,
@@ -46,7 +47,8 @@ You can also configure this compiler in your `mix.exs`
       ]
      ]
    end
-````
+
+```
 
 See the `example` app.
 
