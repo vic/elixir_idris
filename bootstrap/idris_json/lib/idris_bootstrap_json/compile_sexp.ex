@@ -3,7 +3,6 @@ defmodule IdrisBootstrap.Json.CompileSexp do
 
   defmacro __using__(_) do
     quote location: :keep do
-
       defp compile_sdecl(sfun(sname, fsize, _, body)) do
         {module, fname} = sname_to_module_fname(sname)
         vars = generate_vars(fsize, module)
@@ -93,23 +92,6 @@ defmodule IdrisBootstrap.Json.CompileSexp do
 
         {code, vars, module}
       end
-
-      defp locs_to_vars(locs, vars, module) do
-        locs |> Enum.map(&loc_to_var(&1, vars, module))
-      end
-
-      defp loc_to_var(loc(vindex), vars, module) do
-        loc_to_var(vindex, vars, module)
-      end
-
-      defp loc_to_var(index, vars, _module) when length(vars) > index do
-        Enum.at(vars, index)
-      end
-
-      defp loc_to_var(index, _, module) do
-        {:"v#{index}", [index: index], module}
-      end
     end
-
   end
 end

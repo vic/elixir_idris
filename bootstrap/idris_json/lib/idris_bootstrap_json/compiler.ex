@@ -5,7 +5,10 @@ defmodule IdrisBootstrap.Json.Compiler do
 
   use Expat
   import IdrisBootstrap.Json.Patterns
+
+  use IdrisBootstrap.Json.CompileSdecl
   use IdrisBootstrap.Json.CompileSexp
+  use IdrisBootstrap.Json.CompileVars
 
   def compile(json = idris_json(), opts) do
     simple_decls(sdecls) = json
@@ -82,41 +85,6 @@ defmodule IdrisBootstrap.Json.Compiler do
     module
   end
 
-  # pipeable
-  defp let_in({var, expr = {_, _, _}, _in_expr = {a, b, [var | c]}}, vars, module) do
-    code =
-      quote do
-        unquote(expr) |> unquote({a, b, c})
-      end
-
-    {code, vars, module}
-  end
-
-  # calling another function
-  defp let_in({var, expr = {_, _, _}, in_expr}, vars, module) do
-    code =
-      quote do
-        unquote(var) = unquote(expr)
-        unquote(in_expr)
-      end
-
-    {code, vars, module}
-  end
-
-  # literal values
-  defp let_in({var, value, _in_expr = {a, b, args}}, vars, module) do
-    index = Enum.find_index(args, &(var == &1))
-    args = List.update_at(args, index, fn _ -> value end)
-    code = {a, b, args}
-    {code, vars, module}
-  end
-
-  defp generate_vars(names, module) do
-    names
-    |> Stream.with_index()
-    |> Enum.map(fn {_, i} -> loc_to_var(i, nil, module) end)
-  end
-
   def idris_kernel, do: @idris_kernel
 
   def sname_to_module_fname(sname) do
@@ -130,67 +98,6 @@ defmodule IdrisBootstrap.Json.Compiler do
         [name | module] = Enum.reverse(names)
         {Module.concat([@idris_ns] ++ Enum.reverse(module)), String.to_atom(name)}
     end
-  end
-
-  defp underscore_unused(vars, expr) do
-    used = vars_in_expr(expr)
-
-    vars
-    |> Enum.map(fn var = {a, b, c} ->
-      if var in used do
-        var
-      else
-        {:"_#{a}", b, c}
-      end
-    end)
-  end
-
-  defp underscore_unused_in_body(expr) do
-    {code, assigned} = vars_assign_in_expr(expr)
-    used = vars_in_expr(code)
-
-    expr
-    |> Macro.postwalk(fn
-      v = {a, b = [index: _], c} ->
-        if v in assigned && v not in used do
-          {:"_#{a}", b, c}
-        else
-          v
-        end
-
-      x ->
-        x
-    end)
-  end
-
-  defp vars_assign_in_expr(expr) do
-    noop = fn x, y -> {x, y} end
-
-    Macro.traverse(
-      expr,
-      [],
-      fn
-        {:=, _, [var = {a, [index: _], c}, v]}, acc when is_atom(a) and is_atom(c) ->
-          {v, [var] ++ acc}
-
-        x, y ->
-          {x, y}
-      end,
-      noop
-    )
-  end
-
-  defp vars_in_expr(expr) do
-    noop = fn x, y -> {x, y} end
-
-    Macro.traverse(expr, [], noop, fn
-      var = {a, [index: _], c}, acc when is_atom(a) and is_atom(c) ->
-        {var, [var] ++ acc}
-
-      x, y ->
-        {x, y}
-    end)
-    |> elem(1)
   end
 
   import IdrisBootstrap.Json.Patterns, only: []
