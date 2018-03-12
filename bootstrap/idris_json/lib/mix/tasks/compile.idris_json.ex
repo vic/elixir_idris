@@ -95,13 +95,20 @@ defmodule Mix.Tasks.Compile.IdrisJson do
   end
 
   defp files_and_opts({parsed, files, opts}) do
-    opts = opts ++ Enum.map(parsed, fn
-      {:only, v} ->
-        String.split(v, ",") |> Enum.map(& [{"--cg-opt", "--only=#{&1}"}])
-      {:skip, v} ->
-        String.split(v, ",") |> Enum.map(& [{"--cg-opt", "--skip=#{&1}"}])
-      {k, v} -> {"--#{k}", v}
-    end) |> List.flatten
+    opts =
+      (opts ++
+         Enum.map(parsed, fn
+           {:only, v} ->
+             String.split(v, ",") |> Enum.map(&[{"--cg-opt", "--only=#{&1}"}])
+
+           {:skip, v} ->
+             String.split(v, ",") |> Enum.map(&[{"--cg-opt", "--skip=#{&1}"}])
+
+           {k, v} ->
+             {"--#{k}", v}
+         end))
+      |> List.flatten()
+
     {files, opts}
   end
 

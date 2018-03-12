@@ -20,17 +20,18 @@ defmodule IdrisBootstrap.Json do
   end
 
   defp skip_and_only_flags(flags) do
-    kern = Compiler.idris_kernel
+    kern = Compiler.idris_kernel()
 
     modname = &(Compiler.sname_to_module_fname(&1 <> ".fname") |> elem(0))
 
     only = flags |> Keyword.get_values(:only) |> Enum.map(modname)
     skip = flags |> Keyword.get_values(:skip) |> Enum.map(modname)
 
-    skip = cond do
-      kern in only -> skip
-      :else -> [kern] ++ skip
-    end
+    skip =
+      cond do
+        kern in only -> skip
+        :else -> [kern] ++ skip
+      end
 
     flags = flags |> Keyword.delete(:only) |> Keyword.delete(:skip)
     flags = [only: only, skip: skip] ++ flags

@@ -19,6 +19,7 @@ defmodule IdrisBootstrap.Json.Patterns do
   defpat sconst(%{"SConst" => const})
 
   defpat loc(%{"Loc" => index})
+
   defpat slet(%{
            "SLet" => [
              loc(index),
@@ -38,5 +39,4 @@ defmodule IdrisBootstrap.Json.Patterns do
 
   defpat sapp(%{"SApp" => [flag, name, args]})
   defpat sv(%{"SV" => loc})
-
 end
