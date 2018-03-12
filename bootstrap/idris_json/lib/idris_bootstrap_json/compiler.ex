@@ -3,8 +3,8 @@ defmodule IdrisBootstrap.Json.Compiler do
   import IdrisBootstrap.Json.Patterns
 
   @idris_ns IdrisBootstrap.Idris
-  @idris_core Module.concat(@idris_ns, Core)
   @idris_kernel Module.concat(@idris_ns, Kernel)
+  @idris_prim Module.concat(@idris_ns, Kernel.Prim)
 
   def compile(json = idris_json(), opts) do
     simple_decls(sdecls) = json
@@ -117,7 +117,7 @@ defmodule IdrisBootstrap.Json.Compiler do
   defp compile_sexp(sop(lwritestr(), locs), vars, module) do
     args = locs_to_vars(locs, vars, module)
     code = quote do
-      unquote(@idris_core).write_string(unquote_splicing(args))
+      unquote(@idris_prim).write_string(unquote_splicing(args))
     end
     {code, vars, module}
   end
