@@ -1,21 +1,15 @@
 # HelloIdris
 
-**TODO: Add description**
+Example hello world app written in Idris.
 
-## Installation
+It uses `idris_json` to compile its sources into `_build/dev/lib-idris`
+before the `elixirc` takes them.
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `hello_idris` to your list of dependencies in `mix.exs`:
+See the `mix.exs` file.
 
-```elixir
-def deps do
-  [
-    {:hello_idris, "~> 0.1.0"}
-  ]
-end
 ```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/hello_idris](https://hexdocs.pm/hello_idris).
+mix deps.get
+mix compile
+mix idris_json.run_main
+```
 
