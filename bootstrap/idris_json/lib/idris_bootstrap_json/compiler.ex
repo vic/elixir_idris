@@ -23,7 +23,7 @@ defmodule IdrisBootstrap.Json.Compiler do
     sdecl_module(sdecl) in mods
   end
 
-  defp only?(sdecl, []), do: true
+  defp only?(_sdecl, []), do: true
   defp only?(sdecl, mods) do
     sdecl_module(sdecl) in mods
   end
@@ -84,8 +84,14 @@ defmodule IdrisBootstrap.Json.Compiler do
 
     vars = underscore_unused(vars, expr)
 
+    uname = if to_string(fname) =~ ~r/^[a-z]/ do
+      fname
+    else
+      {:unquote, [], [fname]}
+    end
+
     code = quote do
-      def unquote(fname)(unquote_splicing(vars)) do
+      def unquote(uname)(unquote_splicing(vars)) do
         unquote(expr)
       end
     end
@@ -145,17 +151,12 @@ defmodule IdrisBootstrap.Json.Compiler do
     call({remote, fname, args}, vars, module)
   end
 
-  defp call({@idris_kernel, fname, args}, vars, module = @idris_kernel) do
-    call({@idris_core, fname, args}, vars, module)
-  end
-
   defp call({remote, fname, args}, vars, module) do
     code = quote do
       unquote(remote).unquote(fname)(unquote_splicing(args))
     end
     {code, vars, module}
   end
-
 
   defp locs_to_vars(locs, vars, module) do
     locs |> Enum.map(&loc_to_var(&1, vars, module))
@@ -201,23 +202,15 @@ defmodule IdrisBootstrap.Json.Compiler do
     |> Enum.map(fn {_, i} -> loc_to_var(i, nil, module) end)
   end
 
-  defp sfname(name) do
-    name
-    |> String.replace(~r/^([A-Z])/, "c_\\1", global: false)
-    |> String.replace("{", "bl_")
-    |> String.replace("}", "_br")
-    |> String.to_atom
-  end
-
   def idris_kernel, do: @idris_kernel
   def sname_to_module_fname(sname) do
     sname
     |> String.split(".")
     |> case do
-         [name] -> {@idris_kernel, sfname(name)}
+         [name] -> {@idris_kernel, String.to_atom(name)}
          names ->
            [name | module] = Enum.reverse(names)
-           {Module.concat([@idris_ns] ++ Enum.reverse(module)), sfname(name)}
+           {Module.concat([@idris_ns] ++ Enum.reverse(module)), String.to_atom(name)}
        end
   end
 
