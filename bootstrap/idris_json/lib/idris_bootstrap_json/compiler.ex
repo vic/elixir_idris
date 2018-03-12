@@ -90,6 +90,8 @@ defmodule IdrisBootstrap.Json.Compiler do
       {:unquote, [], [fname]}
     end
 
+    expr = underscore_unused_in_body(expr)
+
     code = quote do
       def unquote(uname)(unquote_splicing(vars)) do
         unquote(expr)
@@ -175,24 +177,27 @@ defmodule IdrisBootstrap.Json.Compiler do
   end
 
   # pipeable
-  defp let_in({var, expr, _in_expr = {a, b, [var | c]}}, vars, module) do
+  defp let_in({var, expr = {_, _, _}, _in_expr = {a, b, [var | c]}}, vars, module) do
     code = quote do
       unquote(expr) |> unquote({a, b, c})
     end
     {code, vars, module}
   end
 
-  # second arg inlineable
-  defp let_in({var, expr, _in_expr = {a, b, [c, var | d]}}, vars, module) do
-    code = {a, b, [c, expr | d]}
-    {code, vars, module}
-  end
-
-  defp let_in({var, expr, in_expr}, vars, module) do
+  # calling another function
+  defp let_in({var, expr = {_, _, _}, in_expr}, vars, module) do
     code = quote do
       unquote(var) = unquote(expr)
       unquote(in_expr)
     end
+    {code, vars, module}
+  end
+
+  # literal values
+  defp let_in({var, value, _in_expr = {a, b, args}}, vars, module) do
+    index = Enum.find_index(args, &(var == &1))
+    args = List.update_at(args, index, fn _ -> value end)
+    code = {a, b, args}
     {code, vars, module}
   end
 
@@ -223,6 +228,29 @@ defmodule IdrisBootstrap.Json.Compiler do
         {:"_#{a}", b, c}
       end
     end)
+  end
+
+  defp underscore_unused_in_body(expr) do
+    {code, assigned} = vars_assign_in_expr(expr)
+    used = vars_in_expr(code)
+    expr |> Macro.postwalk(fn
+      v = {a, b = [index: _], c} ->
+        if v in assigned && v not in used do
+          {:"_#{a}", b, c}
+        else
+          v
+        end
+      x -> x
+    end)
+  end
+
+  defp vars_assign_in_expr(expr) do
+    noop = fn x, y -> {x, y} end
+    Macro.traverse(expr, [], fn
+      {:=, _, [var = {a, [index: _], c}, v]}, acc when is_atom(a) and is_atom(c) ->
+        {v, [var] ++ acc}
+      x, y -> {x, y}
+    end, noop)
   end
 
   defp vars_in_expr(expr) do
