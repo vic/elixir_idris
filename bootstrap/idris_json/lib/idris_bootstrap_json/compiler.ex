@@ -10,11 +10,22 @@ defmodule IdrisBootstrap.Json.Compiler do
     simple_decls(sdecls) = json
     sdecls
     |> Flow.from_enumerable()
+    |> Flow.reject(&skip?(&1, opts[:skip]))
+    |> Flow.filter(&only?(&1, opts[:only]))
     |> Flow.partition(key: &sdecl_module/1)
     |> Flow.reduce(fn -> %{} end, &sdecl_module_reducer(&1, &2))
     |> Flow.map(&module_ast(&1))
     |> Flow.map(&module_generate(&1, opts[:output], opts))
     |> Flow.run
+  end
+
+  defp skip?(sdecl, mods) do
+    sdecl_module(sdecl) in mods
+  end
+
+  defp only?(sdecl, []), do: true
+  defp only?(sdecl, mods) do
+    sdecl_module(sdecl) in mods
   end
 
   defp write_elixir_module_in_path({module, code}, path) do
@@ -198,7 +209,8 @@ defmodule IdrisBootstrap.Json.Compiler do
     |> String.to_atom
   end
 
-  defp sname_to_module_fname(sname) do
+  def idris_kernel, do: @idris_kernel
+  def sname_to_module_fname(sname) do
     sname
     |> String.split(".")
     |> case do

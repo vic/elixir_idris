@@ -7,13 +7,35 @@ defmodule IdrisBootstrap.Json do
     aliases: [o: :output],
     switches: [
       interface: :boolean,
-      output: :string
+      output: :string,
+      only: :keep,
+      skip: :keep
     ]
   ]
 
   def main(argv) do
     {flags, json_files, _opts} = OptionParser.parse(argv, @option_parser)
+    flags = skip_and_only_flags(flags)
     compile_json_files(flags, json_files)
+  end
+
+  defp skip_and_only_flags(flags) do
+    kern = Compiler.idris_kernel
+
+    modname = &(Compiler.sname_to_module_fname(&1 <> ".fname") |> elem(0))
+
+    only = flags |> Keyword.get_values(:only) |> Enum.map(modname)
+    skip = flags |> Keyword.get_values(:skip) |> Enum.map(modname)
+
+    skip = cond do
+      kern in only -> skip
+      :else -> [kern] ++ skip
+    end
+
+    flags = flags |> Keyword.delete(:only) |> Keyword.delete(:skip)
+    flags = [only: only, skip: skip] ++ flags
+
+    flags
   end
 
   defp compile_json_files(flags, [json_file]) do

@@ -26,7 +26,12 @@ defmodule Mix.Tasks.Compile.IdrisJson do
 
   `--idris EXECUTABLE` - Specify the idris compiler to use
 
+  `--only MODULES` - Comma separated Idris module names to produce codegen
+
+  `--skip MODULES` - Comma separated Idris module names to ignore from codegen
+
   `--output OUTPUT` - Specify where to place output
+
     #{@output_option_info}
 
 
@@ -90,7 +95,13 @@ defmodule Mix.Tasks.Compile.IdrisJson do
   end
 
   defp files_and_opts({parsed, files, opts}) do
-    opts = opts ++ Enum.map(parsed, fn {k, v} -> {"--#{k}", v} end)
+    opts = opts ++ Enum.map(parsed, fn
+      {:only, v} ->
+        String.split(v, ",") |> Enum.map(& [{"--cg-opt", "--only=#{&1}"}])
+      {:skip, v} ->
+        String.split(v, ",") |> Enum.map(& [{"--cg-opt", "--skip=#{&1}"}])
+      {k, v} -> {"--#{k}", v}
+    end) |> List.flatten
     {files, opts}
   end
 
