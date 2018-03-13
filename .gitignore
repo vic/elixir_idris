@@ -24,4 +24,4 @@ idris-*.tar
 
 .DS_*
 
-.ibc
+*.ibc

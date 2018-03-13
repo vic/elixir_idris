@@ -66,7 +66,7 @@ defmodule Mix.Tasks.Compile.IdrisJson do
   @spec run(OptionParser.argv()) :: :ok | :no_return
   def run(args) do
     config = Mix.Project.config()
-    idris_args = Keyword.get(config, :idris_json, [])
+    idris_args = Keyword.get(config, :idris_json) |> default_args(config)
     {files, opts} = OptionParser.parse(idris_args ++ args) |> files_and_opts
     :ok = build(files, opts)
   end
@@ -79,10 +79,23 @@ defmodule Mix.Tasks.Compile.IdrisJson do
   end
 
   defp build(files, opts) do
-    raise_on_empty_files(files)
     {idris, opts} = idris_executable(opts)
-    opts = @idris_opts ++ ensure_valid_output(opts)
-    argv = opts_to_argv(opts) ++ files
+    build_ipkg = List.keyfind(opts, "--build", 0)
+    {argv, files} =
+      if build_ipkg do
+        argv = opts_to_argv(opts)
+        files = build_ipkg |> elem(1) |> List.wrap
+        {argv, {"ipkg", files}}
+      else
+        raise_on_empty_files(files)
+        argv = opts_to_argv(opts) ++ files
+        opts = @idris_opts ++ ensure_valid_output(opts)
+        {argv, {"idr", files}}
+      end
+    idris_run(idris, argv, files)
+  end
+
+  defp idris_run(idris, argv, files) do
     print_verbose_info(idris, argv, files, true)
 
     tasks = cmd(idris, argv, cwd(), env(), {_tasks = [], &codegen_run/1})
@@ -92,6 +105,15 @@ defmodule Mix.Tasks.Compile.IdrisJson do
     results = Task.yield_many(tasks)
     Enum.all?(results, fn {_, {:ok, _}} -> true end)
     :ok
+  end
+
+  defp default_args(args, _) when is_list(args), do: args
+  defp default_args(nil, config) do
+    build_dir = Path.expand("_build/#{Mix.env}/lib-idris")
+    [
+      "--ibcsubdir", build_dir,
+      "--build", "#{config[:app]}.ipkg"
+    ]
   end
 
   defp files_and_opts({parsed, files, opts}) do
@@ -163,7 +185,7 @@ defmodule Mix.Tasks.Compile.IdrisJson do
     """)
   end
 
-  defp print_verbose_info(exec, args, files, verbose?) do
+  defp print_verbose_info(exec, args, {ext, files}, verbose?) do
     args =
       Enum.map_join(args, " ", fn arg ->
         if String.contains?(arg, " "), do: inspect(arg), else: arg
@@ -177,7 +199,7 @@ defmodule Mix.Tasks.Compile.IdrisJson do
 
     info = (verbose? && " with: #{exec} #{args}") || ""
 
-    Mix.shell().info("Compiling #{files} (.idr)#{info}")
+    Mix.shell().info("Compiling #{files} (.#{ext})#{info}")
   end
 
   defp cwd do

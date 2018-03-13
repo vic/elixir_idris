@@ -1,0 +1,7 @@
+package hello-idris
+
+opts = "--codegenonly --portable-codegen json --output elixir"
+
+sourcedir = lib
+
+modules = Hello

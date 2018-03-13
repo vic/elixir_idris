@@ -8,10 +8,6 @@ defmodule HelloIdris.MixProject do
       elixir: "~> 1.6",
       start_permanent: Mix.env() == :prod,
       compilers: [:idris_json] ++ Mix.compilers,
-      idris_json: [
-        "--output", "elixir:_build/#{Mix.env}/lib-idris",
-        "lib/main.idr"
-      ],
       elixirc_paths: ["lib", "_build/#{Mix.env}/lib-idris"],
       deps: deps()
     ]
