@@ -69,7 +69,7 @@ defmodule Mix.Tasks.Compile.IdrisJson do
   @spec run(OptionParser.argv()) :: :ok | :no_return
   def run(args) do
     config = Mix.Project.config()
-    idris_args = Keyword.get(config, :idris_json) |> default_args(config)
+    idris_args = get_in(config, [:idris_json, :args]) |> default_args(config)
     {files, opts} = OptionParser.parse(idris_args ++ args) |> files_and_opts
     :ok = build(files, opts)
   end
@@ -120,18 +120,40 @@ defmodule Mix.Tasks.Compile.IdrisJson do
   defp default_args(args, _) when is_list(args), do: args
 
   defp default_args(nil, config) do
-    ipkg_file = "#{config[:app]}.ipkg"
+    ipkg_file = get_in(config, [:idris_json, :ipkg_file]) || "#{config[:app]}.ipkg"
     if File.exists?(ipkg_file) do
-      build_dir = Path.expand("_build/#{Mix.env()}/lib-idris")
-      [
-        "--ibcsubdir",
-        build_dir,
-        "--build",
-        ipkg_file
-      ]
+      ipkg_build_args(ipkg_file, ipkg_build_opts(config))
     else
       []
     end
+  end
+
+  defp ipkg_build_opts(config) do
+    args = get_in(config, [:idris_json, :ipkg_opts]) || []
+    {_files, opts} = OptionParser.parse(args) |> files_and_opts
+    opts = @idris_opts ++ ensure_valid_output(opts)
+    opts_to_argv(opts)
+  end
+
+  defp ipkg_build_args(ipkg_file, build_opts) do
+    basename = Path.basename(ipkg_file)
+    build_dir = Path.expand("_build/#{Mix.env()}/lib-idris")
+    build_opts = build_opts |> Enum.join(" ")
+
+    File.mkdir_p!(build_dir)
+    ipkg_tmp = Path.expand(basename, build_dir)
+
+    content = File.read!(ipkg_file) <> """
+    opts = "#{build_opts}"
+    """
+
+    File.write!(ipkg_tmp, content)
+    [
+      "--ibcsubdir",
+      build_dir,
+      "--build",
+      ipkg_tmp
+    ]
   end
 
   defp files_and_opts({parsed, files, opts}) do
