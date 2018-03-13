@@ -43,15 +43,13 @@ defmodule Mix.Tasks.Compile.IdrisJson do
      def project() do
        [
         compilers: [:idris_json] ++ Mix.compilers,
-        idris_json: [
-          "--output", "elixir:" <> "lib",
-          "lib/main.idr"
-        ]
        ]
      end
   ````
 
-  See the `example` app.
+  An `APP.ipkg` file must be present on your project.
+
+  See the `hello_idris` example app.
 
   """
 
@@ -62,6 +60,11 @@ defmodule Mix.Tasks.Compile.IdrisJson do
   ]
   @codegen_path Path.expand("../../../bin/", __DIR__)
   @codegen_name "idris-codegen-json"
+
+  @ipkg_opts ~W[ --build --install --repl
+            --clean --mkdoc --installdoc
+            --checkpkg --testpkg ]
+
 
   @spec run(OptionParser.argv()) :: :ok | :no_return
   def run(args) do
@@ -80,19 +83,26 @@ defmodule Mix.Tasks.Compile.IdrisJson do
 
   defp build(files, opts) do
     {idris, opts} = idris_executable(opts)
-    build_ipkg = List.keyfind(opts, "--build", 0)
+
     {argv, files} =
-      if build_ipkg do
-        argv = opts_to_argv(opts)
-        files = build_ipkg |> elem(1) |> List.wrap
-        {argv, {"ipkg", files}}
-      else
-        raise_on_empty_files(files)
-        argv = opts_to_argv(opts) ++ files
-        opts = @idris_opts ++ ensure_valid_output(opts)
-        {argv, {"idr", files}}
+      case ipkg_option(opts) do
+        {_, ipkg} ->
+          argv = opts_to_argv(opts)
+          files = ipkg |> List.wrap()
+          {argv, {"ipkg", files}}
+
+        nil ->
+          raise_on_empty_files(files)
+          argv = opts_to_argv(opts) ++ files
+          opts = @idris_opts ++ ensure_valid_output(opts)
+          {argv, {"idr", files}}
       end
+
     idris_run(idris, argv, files)
+  end
+
+  defp ipkg_option(opts) do
+    @ipkg_opts |> Enum.find_value(&List.keyfind(opts, &1, 0))
   end
 
   defp idris_run(idris, argv, files) do
@@ -108,11 +118,15 @@ defmodule Mix.Tasks.Compile.IdrisJson do
   end
 
   defp default_args(args, _) when is_list(args), do: args
+
   defp default_args(nil, config) do
-    build_dir = Path.expand("_build/#{Mix.env}/lib-idris")
+    build_dir = Path.expand("_build/#{Mix.env()}/lib-idris")
+
     [
-      "--ibcsubdir", build_dir,
-      "--build", "#{config[:app]}.ipkg"
+      "--ibcsubdir",
+      build_dir,
+      "--build",
+      "#{config[:app]}.ipkg"
     ]
   end
 
@@ -199,7 +213,7 @@ defmodule Mix.Tasks.Compile.IdrisJson do
 
     info = (verbose? && " with: #{exec} #{args}") || ""
 
-    Mix.shell().info("Compiling #{files} (.#{ext})#{info}")
+    Mix.shell().info("Building #{files} (.#{ext})#{info}")
   end
 
   defp cwd do
