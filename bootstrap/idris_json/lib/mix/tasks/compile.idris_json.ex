@@ -93,8 +93,8 @@ defmodule Mix.Tasks.Compile.IdrisJson do
 
         nil ->
           raise_on_empty_files(files)
-          argv = opts_to_argv(opts) ++ files
           opts = @idris_opts ++ ensure_valid_output(opts)
+          argv = opts_to_argv(opts) ++ files
           {argv, {"idr", files}}
       end
 
@@ -120,14 +120,18 @@ defmodule Mix.Tasks.Compile.IdrisJson do
   defp default_args(args, _) when is_list(args), do: args
 
   defp default_args(nil, config) do
-    build_dir = Path.expand("_build/#{Mix.env()}/lib-idris")
-
-    [
-      "--ibcsubdir",
-      build_dir,
-      "--build",
-      "#{config[:app]}.ipkg"
-    ]
+    ipkg_file = "#{config[:app]}.ipkg"
+    if File.exists?(ipkg_file) do
+      build_dir = Path.expand("_build/#{Mix.env()}/lib-idris")
+      [
+        "--ibcsubdir",
+        build_dir,
+        "--build",
+        ipkg_file
+      ]
+    else
+      []
+    end
   end
 
   defp files_and_opts({parsed, files, opts}) do
