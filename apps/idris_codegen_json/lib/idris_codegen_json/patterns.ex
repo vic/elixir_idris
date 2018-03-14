@@ -12,31 +12,42 @@ defmodule Idris.Codegen.JSON.Patterns do
            }
          })
 
-  defpat sfun([name, %{"SFun" => [name, args, n, body]}])
-  defpat snothing(%{"SNothing" => nil})
+  defpat sNothing(%{"SNothing" => nil})
 
-  defpat string(%{"string" => string})
-  defpat sconst(%{"SConst" => const})
+  defpat sInt(%{"int" => value})
+  defpat sBigInt(%{"bigint" => value})
+  defpat sChar(%{"char" => value})
+  defpat sString(%{"string" => string})
+  defpat sConst(%{"SConst" => const})
 
-  defpat loc(%{"Loc" => index})
+  defpat sV(%{"SV" => value})
+  defpat sLoc(%{"Loc" => index})
 
-  defpat slet(%{
-           "SLet" => [
-             loc(index),
-             value,
-             expr
-           ]
-         })
+  defpat sApp(%{"SApp" => [flag, name, args]})
+  defpat sFun([name, %{"SFun" => [name, args, _, body]}])
 
-  defpat lwritestr(%{"LWriteStr" => nil})
-  defpat lexternal(%{"LExternal" => name})
-  defpat sop(%{"SOp" => [op, args]})
-  defpat scon(%{"SCon" => [lvar, at_tail, name, vars]})
-  defpat schk_case(%{"SChkCase" => [loc, cases]})
-  defpat sdefault_case(%{"SDefaultCase" => value})
+  defpat sLet(%{"SLet" => [loc, value, expr]})
 
-  defpat schk_case_noop(schk_case(loc, [sdefault_case(sv(loc))]))
+  defpat sLEq(%{"LEq" => x})
+  defpat sLStrEq(%{"LStrEq" => nil})
+  defpat sLStrHead(%{"LStrHead" => nil})
+  defpat sLStrTail(%{"LStrTail" => nil})
+  defpat sLStrConcat(%{"LStrConcat" => nil})
+  defpat sLWriteStr(%{"LWriteStr" => nil})
+  defpat sLExternal(%{"LExternal" => name})
 
-  defpat sapp(%{"SApp" => [flag, name, args]})
-  defpat sv(%{"SV" => loc})
+  defpat sOp(%{"SOp" => [op, args]})
+  defpat sCon(%{"SCon" => [_, _, name, args]})
+
+  defpat sCase(%{"SCase" => ["Shared", loc, cases]})
+  defpat sConCase(%{"SConCase" => [_, _, cons, args, expr]})
+
+  defpat sConstCase(%{"SConstCase" => [cons, expr]})
+
+  defpat sChkCase(%{"SChkCase" => [loc, cases]})
+  defpat sDefaultCase(%{"SDefaultCase" => value})
+
+  defpat sChkCaseNoop(sChkCase(loc, [sDefaultCase(sV(loc))]))
+
+
 end

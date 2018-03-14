@@ -7,21 +7,20 @@ defmodule Idris.Codegen.JSON.Compiler do
   use Expat
   import Idris.Codegen.JSON.Patterns
 
-  use Idris.Codegen.JSON.CompileSdecl
-  use Idris.Codegen.JSON.CompileSexp
-  use Idris.Codegen.JSON.CompileVars
+  use Idris.Codegen.JSON.{
+    CompileSdecl,
+    CompileSexp,
+    CompileVars,
+    CompileLits,
+    CompileCase,
+    CompileOps
+  }
 
   def compile(json = idris_json(), opts) do
     simple_decls(sdecls) = json
 
     sdecls
     |> Flow.from_enumerable()
-    |> Flow.map(fn sdecl ->
-      sfun(sname, _fsize, _, _body) = sdecl
-      {module, fname} = sname_to_module_fname(sname)
-      IO.inspect({fname, sname}, label: module)
-      sdecl
-    end)
     |> Flow.reject(&skip?(&1, opts[:skip]))
     |> Flow.filter(&only?(&1, opts[:only]))
     |> Flow.partition(key: &sdecl_module/1)
@@ -87,7 +86,7 @@ defmodule Idris.Codegen.JSON.Compiler do
     Map.update(modules, module, [ast], fn xs -> [ast | xs] end)
   end
 
-  defp sdecl_module(sfun(sname, _fsize, _, _body)) do
+  defp sdecl_module(sFun(sname, _fsize, _, _body)) do
     {module, _fname} = sname_to_module_fname(sname)
     module
   end

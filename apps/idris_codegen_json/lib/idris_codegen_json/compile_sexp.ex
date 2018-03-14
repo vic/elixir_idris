@@ -3,95 +3,27 @@ defmodule Idris.Codegen.JSON.CompileSexp do
 
   defmacro __using__(_) do
     quote location: :keep do
-      defp compile_sdecl(sfun(sname, fsize, _, body)) do
+
+      defp compile_sexp(sCon(sname, args)) do
+        args = Enum.map(args, &compile_sexp/1)
+        {:{}, [], [sname | args]}
+      end
+
+      defp compile_sexp(sApp(_, sname, args)) do
+        args = Enum.map(args, &compile_sexp/1)
         {module, fname} = sname_to_module_fname(sname)
-        vars = generate_vars(fsize, module)
-        {expr, vars, _module} = compile_sexp(body, vars, module)
-
-        vars = underscore_unused(vars, expr)
-
-        uname =
-          if to_string(fname) =~ ~r/^[a-z]/ do
-            fname
-          else
-            {:unquote, [], [fname]}
-          end
-
-        expr = underscore_unused_in_body(expr)
-
-        code =
-          quote do
-            def unquote(uname)(unquote_splicing(vars)) do
-              unquote(expr)
-            end
-          end
-
-        {{module, fname, length(vars)}, code}
+        quote do
+          unquote(module).unquote(fname)(unquote_splicing(args))
+        end
       end
 
-      defp compile_sexp(snothing(), vars, module) do
-        {nil, vars, module}
+      defp compile_sexp(sLet(loc, expr, in_expr)) do
+        var = compile_sexp(loc)
+        expr = compile_sexp(expr)
+        in_expr = compile_sexp(in_expr)
+        let_in(var, expr, in_expr)
       end
 
-      defp compile_sexp(sconst(string(value)), vars, module) do
-        {value, vars, module}
-      end
-
-      defp compile_sexp(sv(loc(vindex)), vars, module) do
-        var = loc_to_var(vindex, vars, module)
-        {var, vars, module}
-      end
-
-      defp compile_sexp(sop(lwritestr(), locs), vars, module) do
-        args = locs_to_vars(locs, vars, module)
-
-        code =
-          quote do
-            unquote(@idris_prim).write_string(unquote_splicing(args))
-          end
-
-        {code, vars, module}
-      end
-
-      defp compile_sexp(sop(lexternal(sname), locs), vars, module) do
-        call(sname, locs, vars, module)
-      end
-
-      defp compile_sexp(scon(nil, _, sname, locs), vars, module) do
-        call(sname, locs, vars, module)
-      end
-
-      #
-      defp compile_sexp(schk_case_noop(loc), vars, module) do
-        var = loc_to_var(loc, vars, module)
-        {var, vars, module}
-      end
-
-      defp compile_sexp(sapp(_, sname, locs), vars, module) do
-        call(sname, locs, vars, module)
-      end
-
-      defp compile_sexp(slet(vindex, vexpr, in_expr), vars, module) do
-        {vexpr, _, _} = compile_sexp(vexpr, vars, module)
-        {in_expr, _, _} = compile_sexp(in_expr, vars, module)
-        var = loc_to_var(vindex, vars, module)
-        let_in({var, vexpr, in_expr}, vars, module)
-      end
-
-      defp call(sname, locs, vars, module) do
-        {remote, fname} = sname_to_module_fname(sname)
-        args = locs_to_vars(locs, vars, module)
-        call({remote, fname, args}, vars, module)
-      end
-
-      defp call({remote, fname, args}, vars, module) do
-        code =
-          quote do
-            unquote(remote).unquote(fname)(unquote_splicing(args))
-          end
-
-        {code, vars, module}
-      end
     end
   end
 end

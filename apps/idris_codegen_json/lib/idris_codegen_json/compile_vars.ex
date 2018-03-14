@@ -3,58 +3,48 @@ defmodule Idris.Codegen.JSON.CompileVars do
 
   defmacro __using__(_) do
     quote location: :keep do
-      # pipeable
-      defp let_in({var, expr = {_, _, _}, _in_expr = {a, b, [var | c]}}, vars, module) do
-        code =
-          quote do
-            unquote(expr) |> unquote({a, b, c})
-          end
 
-        {code, vars, module}
+      defp compile_sexp("{in_" <> var) do
+        var
+        |> String.replace_trailing("}", "")
+        |> Integer.parse
+        |> elem(0)
+        |> var()
+      end
+
+      # pipeable
+      defp let_in(var, expr = {_, _, _}, _in = {a, b, [var | c]}) do
+        {:|>, [], [expr, {a, b, c}]}
+      end
+
+      # in block
+      defp let_in(var, expr = {_, _, _}, in_expr = {:__block__, _, block}) do
+        quote do
+          unquote(var) = unquote(expr)
+          unquote_splicing(block)
+        end
       end
 
       # calling another function
-      defp let_in({var, expr = {_, _, _}, in_expr}, vars, module) do
-        code =
-          quote do
-            unquote(var) = unquote(expr)
-            unquote(in_expr)
-          end
-
-        {code, vars, module}
+      defp let_in(var, expr = {_, _, _}, in_expr) do
+        quote do
+          unquote(var) = unquote(expr)
+          unquote(in_expr)
+        end
       end
 
       # literal values
-      defp let_in({var, value, _in_expr = {a, b, args}}, vars, module) do
-        index = Enum.find_index(args, &(var == &1))
+      defp let_in(var, value, _in_expr = {a, b, args}) do
+        {_, [index: index], _} = var
         args = List.update_at(args, index, fn _ -> value end)
-        code = {a, b, args}
-        {code, vars, module}
+        {a, b, args}
       end
 
-      defp generate_vars(names, module) do
-        names
-        |> Stream.with_index()
-        |> Enum.map(fn {_, i} -> loc_to_var(i, nil, module) end)
+      defp var(index) when is_integer(index) do
+        {:"v#{index}", [index: index], nil}
       end
 
-      defp locs_to_vars(locs, vars, module) do
-        locs |> Enum.map(&loc_to_var(&1, vars, module))
-      end
-
-      defp loc_to_var(loc(vindex), vars, module) do
-        loc_to_var(vindex, vars, module)
-      end
-
-      defp loc_to_var(index, vars, _module) when length(vars) > index do
-        Enum.at(vars, index)
-      end
-
-      defp loc_to_var(index, _, module) do
-        {:"v#{index}", [index: index], module}
-      end
-
-      defp underscore_unused(vars, expr) do
+      defp underscore_unused_args(vars, expr) do
         used = vars_in_expr(expr)
 
         vars
