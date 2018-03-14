@@ -5,13 +5,10 @@
 You just need latest idris installed.
 
 ```
-cd bootstrap/idris_json
+cd examples/hello_elixir
 mix deps.get
 mix compile
 
-mix compile.idris_json test/examples/hello.idr --output elixir
-
-mix help compile.idris_json
 ```
 
 ## Installation
