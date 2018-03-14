@@ -1,0 +1,5 @@
+package hello_elixir
+
+sourcedir = lib
+
+modules = Main

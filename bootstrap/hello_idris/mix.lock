@@ -1,7 +1,0 @@
-%{
-  "expat": {:hex, :expat, "1.0.2", "ab105f0cca86fc091b26e392a2d9105adc756cd784e5927274b24fe74970d44b", [:mix], [], "hexpm"},
-  "flow": {:hex, :flow, "0.13.0", "7188ef047c6831ffb2f25ec0cef9bef02e7ae520632a64debdb65ae96bdc223e", [:mix], [{:gen_stage, "~> 0.13.0", [hex: :gen_stage, repo: "hexpm", optional: false]}], "hexpm"},
-  "gen_stage": {:hex, :gen_stage, "0.13.1", "edff5bca9cab22c5d03a834062515e6a1aeeb7665fb44eddae086252e39c4378", [:mix], [], "hexpm"},
-  "idris_quantities": {:git, "https://github.com/timjb/quantities", "ec0f123e017100079b1454b6ab0d020bdb1692a4", []},
-  "jason": {:hex, :jason, "1.0.0", "0f7cfa9bdb23fed721ec05419bcee2b2c21a77e926bce0deda029b5adc716fe2", [:mix], [{:decimal, "~> 1.0", [hex: :decimal, repo: "hexpm", optional: true]}], "hexpm"},
-}
