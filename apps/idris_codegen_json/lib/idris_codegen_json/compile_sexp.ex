@@ -3,7 +3,6 @@ defmodule Idris.Codegen.JSON.CompileSexp do
 
   defmacro __using__(_) do
     quote location: :keep do
-
       defp compile_sexp(sCon(sname, args)) do
         args = Enum.map(args, &compile_sexp/1)
         {:{}, [], [sname | args]}
@@ -12,6 +11,7 @@ defmodule Idris.Codegen.JSON.CompileSexp do
       defp compile_sexp(sApp(_, sname, args)) do
         args = Enum.map(args, &compile_sexp/1)
         {module, fname} = sname_to_module_fname(sname)
+
         quote do
           unquote(module).unquote(fname)(unquote_splicing(args))
         end
@@ -23,7 +23,6 @@ defmodule Idris.Codegen.JSON.CompileSexp do
         in_expr = compile_sexp(in_expr)
         let_in(var, expr, in_expr)
       end
-
     end
   end
 end

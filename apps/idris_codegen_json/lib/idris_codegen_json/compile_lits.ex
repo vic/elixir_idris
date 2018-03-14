@@ -3,7 +3,6 @@ defmodule Idris.Codegen.JSON.CompileLits do
 
   defmacro __using__(_) do
     quote location: :keep do
-
       defp compile_sexp(sNothing()), do: nil
       defp compile_sexp(sInt(value)), do: value
       defp compile_sexp(sBigInt(value)), do: Integer.parse(value) |> elem(0)
@@ -16,11 +15,9 @@ defmodule Idris.Codegen.JSON.CompileLits do
         value
         |> String.replace_prefix("\"", "")
         |> String.replace_suffix("\"", "")
-        |> Code.eval_string
+        |> Code.eval_string()
         |> elem(0)
       end
-
-
     end
   end
 end

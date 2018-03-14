@@ -3,7 +3,6 @@ defmodule Idris.Codegen.JSON.CompileCase do
 
   defmacro __using__(_) do
     quote location: :keep do
-
       defp compile_sexp(sCase(value, clauses)) do
         value = compile_sexp(value)
         clauses = Enum.map(clauses, &compile_case_clause/1)
@@ -38,7 +37,6 @@ defmodule Idris.Codegen.JSON.CompileCase do
         con = {:{}, [], [sname | args]}
         clause = {:->, [], [[con], expr]}
       end
-
     end
   end
 end

@@ -3,18 +3,16 @@ defmodule Idris.Codegen.JSON.CompileVars do
 
   defmacro __using__(_) do
     quote location: :keep do
-
       defp compile_sexp("{in_" <> var) do
         var
         |> String.replace_trailing("}", "")
-        |> fn x -> {String.to_atom(
-                       x), [], nil} end.()
+        |> (fn x -> {String.to_atom(x), [], nil} end).()
       end
 
       defp compile_sexp("{P_c_" <> var) do
         var
         |> String.replace_trailing("}", "")
-        |> fn x -> {String.to_atom(x), [], nil} end.()
+        |> (fn x -> {String.to_atom(x), [], nil} end).()
       end
 
       # pipeable last block value
@@ -33,9 +31,11 @@ defmodule Idris.Codegen.JSON.CompileVars do
       defp let_in(var, {:__block__, _, block}, in_expr) do
         [last | prev] = Enum.reverse(block)
         last = let_in(var, last, in_expr)
+
         case last do
           {:__block__, _, bs} ->
             {:__block__, [], Enum.reverse(prev) ++ bs}
+
           _ ->
             {:__block__, [], Enum.reverse([last] ++ prev)}
         end

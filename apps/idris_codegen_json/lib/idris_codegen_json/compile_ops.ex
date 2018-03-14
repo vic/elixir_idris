@@ -68,16 +68,17 @@ defmodule Idris.Codegen.JSON.CompileOps do
   ]
 
   defmacro __using__(_) do
-    ops = @ops |> Enum.map(fn op ->
-      quote do
-        defp compile_op(%{unquote(op) => _}) do
-          {:., [], [@idris_prim, unquote(String.to_atom(op))]}
+    ops =
+      @ops
+      |> Enum.map(fn op ->
+        quote do
+          defp compile_op(%{unquote(op) => _}) do
+            {:., [], [@idris_prim, unquote(String.to_atom(op))]}
+          end
         end
-      end
-    end)
+      end)
 
     quote location: :keep do
-
       defp compile_sexp(sOp(op, args)) do
         args = args |> Enum.map(&compile_sexp/1)
         {compile_op(op), [], args}
@@ -89,7 +90,6 @@ defmodule Idris.Codegen.JSON.CompileOps do
         {module, name} = sname_to_module_fname(sname)
         {:., [], [module, name]}
       end
-
     end
   end
 end
