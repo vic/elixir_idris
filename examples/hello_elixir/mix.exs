@@ -40,19 +40,26 @@ defmodule HelloElixir.MixProject do
 
   defp idris_elixir, do: Path.expand("_build/#{Mix.env}/lib-idris")
 
+  # Idris source deps format as regular Mix deps, but these should
+  # have the following options set:
+  #
+  #  idris: :source  - to mark as an Idris source dependency
+  #                    its path will be added via `--idrispath` on compilation.
+  #
+  #  compile: false  - Tell Mix not to compile as it's not exlixir sources.
+  #  app: false      - Tell Mix that it's not an OTP application
+  #
   defp idris_deps do
-    # Same format as regular Mix deps, but these should
-    # have the following options set:
-    #
-    #  idris: :source  - to mark as an Idris source dependency
-    #                    its path will be added via `--idrispath` on compilation.
-    #
-    #  compile: false  - Tell Mix not to compile as it's not exlixir sources.
-    #  app: false      - Tell Mix that it's not an OTP application
-    #
     [
-      # {:quantities, idris: :source, compile: false, app: false, git: "https://github.com/timjb/quantities"}
-      # {:hello_idris, idris: :source, compile: false, app: false, path: "../hello_idris"}
-    ]
+      # {:quantities, git: "https://github.com/timjb/quantities"}
+      # {:hello_idris, path: "../hello_idris"}
+    ] |> append_dep_opts(idris: :source, compile: false, app: false)
+  end
+
+  defp append_dep_opts(deps, more_opts) do
+    Enum.map(deps, fn
+      {name, opts} when is_list(opts) ->
+        {name, opts ++ more_opts}
+    end)
   end
 end
