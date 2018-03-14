@@ -10,9 +10,14 @@ defmodule Idris.Codegen.JSON.CompileCase do
         {:case, [], [value, [do: clauses]]}
       end
 
-
       defp compile_sexp(sChkCaseNoop(loc)) do
         compile_sexp(loc)
+      end
+
+      defp compile_sexp(sChkCase(value, clauses)) do
+        value = compile_sexp(value)
+        clauses = Enum.map(clauses, &compile_case_clause/1)
+        {:case, [], [value, [do: clauses]]}
       end
 
       defp compile_case_clause(sDefaultCase(expr)) do

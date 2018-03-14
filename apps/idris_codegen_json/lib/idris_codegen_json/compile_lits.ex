@@ -14,9 +14,10 @@ defmodule Idris.Codegen.JSON.CompileLits do
 
       defp compile_sexp(sChar(value)) do
         value
-        |> String.replace_leading("\"'", "")
-        |> String.replace_trailing("'\"", "")
-        |> to_charlist
+        |> String.replace_prefix("\"", "")
+        |> String.replace_suffix("\"", "")
+        |> Code.eval_string
+        |> elem(0)
       end
 
 

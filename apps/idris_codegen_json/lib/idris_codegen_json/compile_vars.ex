@@ -7,9 +7,21 @@ defmodule Idris.Codegen.JSON.CompileVars do
       defp compile_sexp("{in_" <> var) do
         var
         |> String.replace_trailing("}", "")
-        |> Integer.parse
-        |> elem(0)
-        |> var()
+        |> fn x -> {String.to_atom(
+                       x), [], nil} end.()
+      end
+
+      defp compile_sexp("{P_c_" <> var) do
+        var
+        |> String.replace_trailing("}", "")
+        |> fn x -> {String.to_atom(x), [], nil} end.()
+      end
+
+      # pipeable last block value
+      defp let_in(var, {:__block__, _, block}, _in = {a, b, [var | c]}) do
+        [expr | prev] = Enum.reverse(block)
+        last = {:|>, [], [expr, {a, b, c}]}
+        {:__block__, [], Enum.reverse([last] ++ prev)}
       end
 
       # pipeable
@@ -17,7 +29,19 @@ defmodule Idris.Codegen.JSON.CompileVars do
         {:|>, [], [expr, {a, b, c}]}
       end
 
-      # in block
+      # var = block
+      defp let_in(var, {:__block__, _, block}, in_expr) do
+        [last | prev] = Enum.reverse(block)
+        last = let_in(var, last, in_expr)
+        case last do
+          {:__block__, _, bs} ->
+            {:__block__, [], Enum.reverse(prev) ++ bs}
+          _ ->
+            {:__block__, [], Enum.reverse([last] ++ prev)}
+        end
+      end
+
+      # var in block
       defp let_in(var, expr = {_, _, _}, in_expr = {:__block__, _, block}) do
         quote do
           unquote(var) = unquote(expr)
@@ -25,7 +49,7 @@ defmodule Idris.Codegen.JSON.CompileVars do
         end
       end
 
-      # calling another function
+      # calling function
       defp let_in(var, expr = {_, _, _}, in_expr) do
         quote do
           unquote(var) = unquote(expr)

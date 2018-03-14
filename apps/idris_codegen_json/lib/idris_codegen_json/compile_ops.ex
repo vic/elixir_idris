@@ -70,8 +70,8 @@ defmodule Idris.Codegen.JSON.CompileOps do
   defmacro __using__(_) do
     ops = @ops |> Enum.map(fn op ->
       quote do
-        def compile_op(%{unquote(op) => _}) do
-          {:., [], [Idris.Prim, unquote(String.to_atom(op))]}
+        defp compile_op(%{unquote(op) => _}) do
+          {:., [], [@idris_prim, unquote(String.to_atom(op))]}
         end
       end
     end)
@@ -84,6 +84,11 @@ defmodule Idris.Codegen.JSON.CompileOps do
       end
 
       unquote_splicing(ops)
+
+      defp compile_op(sLExternal(sname)) do
+        {module, name} = sname_to_module_fname(sname)
+        {:., [], [module, name]}
+      end
 
     end
   end

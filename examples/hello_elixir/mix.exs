@@ -12,7 +12,8 @@ defmodule HelloElixir.MixProject do
       deps: deps() ++ idris_deps(),
       elixirc_paths: ["lib", idris_elixir()],
       idris_codegen: {:json,
-                      output: "elixir:" <> idris_elixir(),
+                      #output: "elixir:" <> idris_elixir(),
+                      output: "elixir",
                       ibcsubdir: idris_elixir()},
 
       # Either specify a main file or an ipkg file.
@@ -51,7 +52,7 @@ defmodule HelloElixir.MixProject do
     #
     [
       # {:quantities, idris: :source, compile: false, app: false, git: "https://github.com/timjb/quantities"}
-      {:hello_idris, idris: :source, compile: false, app: false, path: "../hello_idris"}
+      # {:hello_idris, idris: :source, compile: false, app: false, path: "../hello_idris"}
     ]
   end
 end

@@ -21,8 +21,8 @@ defmodule Idris.Codegen.JSON.Compiler do
 
     sdecls
     |> Flow.from_enumerable()
-    |> Flow.reject(&skip?(&1, opts[:skip]))
-    |> Flow.filter(&only?(&1, opts[:only]))
+    #|> Flow.reject(&skip?(&1, opts[:skip]))
+    #|> Flow.filter(&only?(&1, opts[:only]))
     |> Flow.partition(key: &sdecl_module/1)
     |> Flow.reduce(fn -> %{} end, &sdecl_module_reducer(&1, &2))
     |> Flow.map(&module_ast(&1))
@@ -95,14 +95,18 @@ defmodule Idris.Codegen.JSON.Compiler do
 
   def sname_to_module_fname(sname) do
     sname
-    |> String.split(".")
+    |> String.split(~r/.*\./, parts: 2, include_captures: true)
     |> case do
       [name] ->
         {@idris_kernel, String.to_atom(name)}
 
-      names ->
-        [name | module] = Enum.reverse(names)
-        {Module.concat([@idris_ns] ++ Enum.reverse(module)), String.to_atom(name)}
+      ["", mod, ""] ->
+           mod = String.replace_trailing(mod, "..", "")
+        {Module.concat(@idris_ns, mod), :.}
+
+      ["", mod, name] ->
+           mod = String.replace_trailing(mod, ".", "")
+        {Module.concat(@idris_ns, mod), String.to_atom(name)}
     end
   end
 
