@@ -69,8 +69,8 @@ defmodule Mix.Tasks.Compile.IdrisJson do
   @spec run(OptionParser.argv()) :: :ok | :no_return
   def run(args) do
     config = Mix.Project.config()
-    idris_args = get_in(config, [:idris_json, :args]) |> default_args(config)
-    {files, opts} = OptionParser.parse(idris_args ++ args) |> files_and_opts
+    args = default_args(args, config)
+    {files, opts} = OptionParser.parse(args) |> files_and_opts
     :ok = build(files, opts)
   end
 
@@ -117,22 +117,21 @@ defmodule Mix.Tasks.Compile.IdrisJson do
     :ok
   end
 
-  defp default_args(args, _) when is_list(args), do: args
-
-  defp default_args(nil, config) do
+  defp default_args(args, config) do
     ipkg_file = get_in(config, [:idris_json, :ipkg_file]) || "#{config[:app]}.ipkg"
     if File.exists?(ipkg_file) do
-      ipkg_build_args(ipkg_file, ipkg_build_opts(config))
+      ipkg_build_args(ipkg_file, ipkg_build_opts(args, config))
     else
       []
     end
   end
 
-  defp ipkg_build_opts(config) do
-    args = get_in(config, [:idris_json, :ipkg_opts]) || []
+  defp ipkg_build_opts(args, config) do
+    args = (Enum.empty?(args) && get_in(config, [:idris_json, :ipkg_opts])) || args
     {_files, opts} = OptionParser.parse(args) |> files_and_opts
     opts = @idris_opts ++ ensure_valid_output(opts)
     opts_to_argv(opts)
+    |> IO.inspect
   end
 
   defp ipkg_build_args(ipkg_file, build_opts) do

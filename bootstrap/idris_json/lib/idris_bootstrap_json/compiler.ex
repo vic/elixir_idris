@@ -15,6 +15,10 @@ defmodule IdrisBootstrap.Json.Compiler do
 
     sdecls
     |> Flow.from_enumerable()
+    |> Flow.map(fn sdecl ->
+      IO.inspect(sdecl_module(sdecl))
+      sdecl
+    end)
     |> Flow.reject(&skip?(&1, opts[:skip]))
     |> Flow.filter(&only?(&1, opts[:only]))
     |> Flow.partition(key: &sdecl_module/1)

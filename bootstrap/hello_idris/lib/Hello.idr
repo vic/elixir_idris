@@ -1,4 +1,6 @@
-module Main
+module Hello
 
-main : IO ()
-main = putStrLn "Hello Idris!"
+public export
+hello : String -> String
+hello = ("Hello " ++)
+
