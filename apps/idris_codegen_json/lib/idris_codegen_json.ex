@@ -50,13 +50,13 @@ defmodule Idris.Codegen.JSON do
     compiler = Keyword.get(opts, :compiler, @compiler)
     new_map = fn -> %{} end
 
-    # |> Flow.map(&mod_generate/1)
     sdecls
     |> Flow.from_enumerable()
     |> Flow.map(&mod_fun_decl/1)
     |> Flow.partition(key: {:elem, 0})
     |> Flow.reduce(new_map, &mod_reducer/2)
     |> Flow.map(&mod_macrogen(&1, compiler))
+    |> Flow.map(&mod_compile/1)
     |> Flow.map(&mod_emit(&1, opts[:output]))
     |> Flow.run()
 
@@ -85,53 +85,75 @@ defmodule Idris.Codegen.JSON do
     {module, nil}
   end
 
+  defp mod_compile({module, code}) do
+    functions = [{__MODULE__, [mod_fun_name: 1]}]
+    env = %Macro.Env{module: module, functions: functions}
+    {code, _binds} = Code.eval_quoted(code, _binds = [], env)
+    {module, code}
+  end
+
   defp mod_emit({module, code}, "elixir:" <> path) do
     write_elixir_module_in_path({module, code}, path)
   end
 
   defp mod_reducer({module, _fname, sdecl}, modules) do
-    ast = macrogen(sdecl)
+    ast = macrogen(module, sdecl)
     Map.update(modules, module, [ast], fn xs -> [ast | xs] end)
   end
 
   defp mod_macrogen({module, asts}, compiler) do
     code =
       quote do
-        use unquote(compiler), do: cg_Module(unquote(module), unquote(asts))
+        use unquote(compiler), do:
+        cg_Module(__ENV__, unquote(module), unquote(asts))
       end
-
     {module, code}
   end
 
-  defp macrogen(m) when map_size(m) == 1 do
-    [{name, args}] = Enum.into(m, [])
+  defp macrogen(module, map) when map_size(map) == 1 do
+    [{name, args}] = Enum.into(map, [])
     args = List.wrap(args)
-    {:"cg_#{name}", [], macrogen(args)}
+    env = {:__ENV__, [], Elixir}
+    {:"cg_#{name}", [], [env] ++ macrogen(module, args)}
   end
 
-  defp macrogen(args) when is_list(args) do
-    Enum.map(args, &macrogen/1)
+  defp macrogen(module, args) when is_list(args) do
+    Enum.map(args, &macrogen(module, &1))
   end
 
-  defp macrogen(value), do: value
+  defp macrogen(_module, value), do: value
 
-  defp mod_fun_decl([name, decl]) do
-    {module, fname} =
+  @doc false
+  def mod_fun_name(name) do
+    {mnames, fname} =
       name
       |> String.split(~r/.*\./, parts: 2, include_captures: true)
       |> case do
         [name] ->
-          {@idris_kernel, String.to_atom(name)}
+          {[@idris_kernel], name}
 
         ["", mod, ""] ->
           mod = String.replace_trailing(mod, "..", "")
-          {Module.concat(@idris_ns, mod), :.}
+          {[@idris_ns, mod], "."}
 
         ["", mod, name] ->
           mod = String.replace_trailing(mod, ".", "")
-          {Module.concat(@idris_ns, mod), String.to_atom(name)}
+          {[@idris_ns, mod], name}
       end
 
+    mnames =
+      mnames
+      |> Stream.map(&to_string/1)
+      |> Enum.map(&String.replace(&1, ~r/_/, "Un"))
+      |> Enum.map(&String.replace(&1, ~r/@/, "At"))
+
+    module = Module.concat(mnames)
+    fname = String.to_atom(name)
+    {module, fname}
+  end
+
+  defp mod_fun_decl([name, decl]) do
+    {module, fname} = mod_fun_name(name)
     {module, fname, decl}
   end
 end
