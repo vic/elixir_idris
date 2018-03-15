@@ -24,7 +24,6 @@ defmodule Idris.Codegen.JSON do
   @compiler __MODULE__.Compiler
   @idris_ns Idris.Bootstrap
   @idris_kernel Module.concat(@idris_ns, Kernel)
-  @idris_prim Module.concat(@idris_ns, Kernel.Prim)
 
   def run(argv) do
     {flags, json_files, _opts} = OptionParser.parse(argv, @option_parser)
@@ -82,12 +81,11 @@ defmodule Idris.Codegen.JSON do
 
   defp mod_emit({module, code}, "elixir") do
     IO.puts(ast_to_string(code))
-    {module, nil}
+    {module, code}
   end
 
   defp mod_compile({module, code}) do
-    functions = [{__MODULE__, [mod_fun_name: 1]}]
-    env = %Macro.Env{module: module, functions: functions}
+    env = %Macro.Env{module: module}
     {code, _binds} = Code.eval_quoted(code, _binds = [], env)
     {module, code}
   end
@@ -96,8 +94,8 @@ defmodule Idris.Codegen.JSON do
     write_elixir_module_in_path({module, code}, path)
   end
 
-  defp mod_reducer({module, _fname, sdecl}, modules) do
-    ast = macrogen(module, sdecl)
+  defp mod_reducer({module, fname, sdecl}, modules) do
+    ast = macrogen({module, fname}, sdecl)
     Map.update(modules, module, [ast], fn xs -> [ast | xs] end)
   end
 
@@ -105,23 +103,22 @@ defmodule Idris.Codegen.JSON do
     code =
       quote do
         use unquote(compiler), do:
-        cg_Module(__ENV__, unquote(module), unquote(asts))
+        cg_Module(unquote(module), unquote(asts))
       end
     {module, code}
   end
 
-  defp macrogen(module, map) when map_size(map) == 1 do
+  defp macrogen(ctx, map) when map_size(map) == 1 do
     [{name, args}] = Enum.into(map, [])
     args = List.wrap(args)
-    env = {:__ENV__, [], Elixir}
-    {:"cg_#{name}", [], [env] ++ macrogen(module, args)}
+    {:"cg_#{name}", [], [ctx] ++ macrogen(ctx, args)}
   end
 
-  defp macrogen(module, args) when is_list(args) do
-    Enum.map(args, &macrogen(module, &1))
+  defp macrogen(ctx, args) when is_list(args) do
+    Enum.map(args, &macrogen(ctx, &1))
   end
 
-  defp macrogen(_module, value), do: value
+  defp macrogen(_ctx, value), do: value
 
   @doc false
   def mod_fun_name(name) do
@@ -148,7 +145,7 @@ defmodule Idris.Codegen.JSON do
       |> Enum.map(&String.replace(&1, ~r/@/, "At"))
 
     module = Module.concat(mnames)
-    fname = String.to_atom(name)
+    fname = String.to_atom(fname)
     {module, fname}
   end
 
