@@ -15,15 +15,47 @@ defmodule Idris.Codegen.JSON.Compiler do
     CompileOps
   }
 
+  defp skip_and_only_flags(flags) do
+    kern = Compiler.idris_kernel()
+
+    modname = &(Compiler.sname_to_module_fname(&1 <> ".fname") |> elem(0))
+
+    only = flags |> Keyword.get_values(:only) |> Enum.map(modname)
+    skip = flags |> Keyword.get_values(:skip) |> Enum.map(modname)
+
+    skip =
+      cond do
+      kern in only -> skip
+      :else -> [kern] ++ skip
+    end
+
+    flags = flags |> Keyword.delete(:only) |> Keyword.delete(:skip)
+    flags = [only: only, skip: skip] ++ flags
+
+    flags
+  end
+
+  defp compile_json_files(flags, [json_file]) do
+    File.cp!(json_file, "/tmp/idris.json")
+
+    opts = [json_file: json_file, sdecl_compiler: &Macrogen.compile/1]
+
+    json_file
+    |> File.read!()
+    |> Jason.decode!()
+    |> compile_json(opts ++ flags)
+  end
+
   def compile(json = idris_json(), opts) do
     simple_decls(sdecls) = json
+    sdecl_compiler = opts[:sdecl_compiler] || &compile_sdecl/1
 
     # |> Flow.reject(&skip?(&1, opts[:skip]))
     # |> Flow.filter(&only?(&1, opts[:only]))
     sdecls
     |> Flow.from_enumerable()
     |> Flow.partition(key: &sdecl_module/1)
-    |> Flow.reduce(fn -> %{} end, &sdecl_module_reducer(&1, &2))
+    |> Flow.reduce(fn -> %{} end, &sdecl_module_reducer(&1, &2, sdecl_compiler))
     |> Flow.map(&module_ast(&1))
     |> Flow.map(&module_generate(&1, opts[:output], opts))
     |> Flow.run()
@@ -80,8 +112,9 @@ defmodule Idris.Codegen.JSON.Compiler do
     {module, code}
   end
 
-  defp sdecl_module_reducer(sdecl, modules) do
-    {{module, _f, _a}, ast} = compile_sdecl(sdecl)
+  defp sdecl_module_reducer(sdecl, modules, sdecl_compiler) do
+    module = sdecl_module(sdecl)
+    ast = sdecl_compiler.(sdecl)
     Map.update(modules, module, [ast], fn xs -> [ast | xs] end)
   end
 
@@ -108,6 +141,7 @@ defmodule Idris.Codegen.JSON.Compiler do
         {Module.concat(@idris_ns, mod), String.to_atom(name)}
     end
   end
+
 
   import Idris.Codegen.JSON.Patterns, only: []
 end

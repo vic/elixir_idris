@@ -10,8 +10,6 @@ end
 defmodule Idris.Codegen.JSON do
   @moduledoc false
 
-  alias __MODULE__.Compiler
-
   @option_parser [
     aliases: [o: :output],
     switches: [
@@ -28,32 +26,4 @@ defmodule Idris.Codegen.JSON do
     compile_json_files(flags, json_files)
   end
 
-  defp skip_and_only_flags(flags) do
-    kern = Compiler.idris_kernel()
-
-    modname = &(Compiler.sname_to_module_fname(&1 <> ".fname") |> elem(0))
-
-    only = flags |> Keyword.get_values(:only) |> Enum.map(modname)
-    skip = flags |> Keyword.get_values(:skip) |> Enum.map(modname)
-
-    skip =
-      cond do
-        kern in only -> skip
-        :else -> [kern] ++ skip
-      end
-
-    flags = flags |> Keyword.delete(:only) |> Keyword.delete(:skip)
-    flags = [only: only, skip: skip] ++ flags
-
-    flags
-  end
-
-  defp compile_json_files(flags, [json_file]) do
-    File.cp!(json_file, "/tmp/idris.json")
-
-    json_file
-    |> File.read!()
-    |> Jason.decode!()
-    |> Compiler.compile([json_file: json_file] ++ flags)
-  end
 end

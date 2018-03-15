@@ -26,7 +26,7 @@ defmodule Idris.Codegen.JSON.CompileSdecl do
             end
           end
 
-        {{module, fname, length(args)}, code}
+        code
       end
     end
   end
