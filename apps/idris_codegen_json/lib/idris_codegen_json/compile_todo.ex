@@ -8,6 +8,13 @@ defmodule Idris.Codegen.JSON.Compiler.TODO do
     Currently, the Compiler uses the simplified AST, thus most cg_F* and cg_D*
     wont be used, most likely.
 
+    Copyright (c) 2011 Edwin Brady
+    School of Computer Science, University of St Andrews
+    All rights reserved.
+
+    This code is derived from software written by Edwin Brady
+    (eb@cs.st-andrews.ac.uk).
+
     Generated from
     https://github.com/idris-lang/Idris-dev/blob/f92ecd25d48a9120abfbb7d6af81f9b194ab98f1/src/IRTS/Portable.hs
     """

@@ -1,7 +1,27 @@
 defmodule Idris.Codegen.JSON.Compiler do
   @moduledoc false
 
-  import Idris.Codegen.JSON.Main, only: [mod_fun_name: 1]
+  @idris_ns Idris.Bootstrap
+  @idris_kernel Module.concat(@idris_ns, Kernel)
+
+  def mod_fun_name(name) do
+    name
+    |> String.replace(~r/(\w)\./, "\\1(dot)")
+    |> String.split(~r/.*\(dot\)/, parts: 2, include_captures: true)
+    |> case do
+         [name] ->
+           {@idris_kernel, String.to_atom(name)}
+
+         ["", mod, name] ->
+           mod =
+             mod
+             |> String.replace("(dot)", ".")
+             |> String.replace_trailing(".", "")
+             |> String.replace("@", "At_")
+             |> String.replace("_", "Un_")
+           {Module.concat(@idris_ns, mod), String.to_atom(name)}
+       end
+  end
 
   defmacro __using__(do: code) do
     implemented = __MODULE__.__info__(:functions)
@@ -55,10 +75,9 @@ defmodule Idris.Codegen.JSON.Compiler do
 
   def cg_SCon(_ctx, _lv, _i, "Prelude.List.::", _vars = [a, b]) do
     quote do
-      unquote(a) ++ unquote(b)
+      [unquote(a) | unquote(b)]
     end
   end
-
 
   def cg_SCon(_ctx, _lv, _i, name, vars) do
     {:{}, [], [String.to_atom(name) | vars]}
@@ -90,6 +109,10 @@ defmodule Idris.Codegen.JSON.Compiler do
     {{:., [], [mod, fun]}, [], exps}
   end
 
+  def cg_SOp(_ctx, _pipe1 = {_, [pipe_1: pipe], _}, [var]) do
+    quote do: unquote(var) |> unquote(pipe)
+  end
+
   def cg_SOp(_ctx, prim, vars) do
     {prim, [], vars}
   end
@@ -114,18 +137,18 @@ defmodule Idris.Codegen.JSON.Compiler do
   def cg_LStrCons(_ctx), do: :<>
   def cg_LStrConcat(_ctx), do: :<>
   def cg_LStrHead(_ctx), do: {:., [], [String, :first]}
-  def cg_LStrTail(_ctx), do: quote(do: &String.slice(&1, 1))
+  def cg_LStrTail(_ctx), do: pipe_1(quote do: String.slice(1..-1))
 
   def cg_LWriteStr(_ctx), do: {:., [], [Kernel, :puts]}
 
   def cg_LIntStr(_ctx, _ity), do: :to_string
 
   def cg_LSExt(_ctx, _from, _to) do
-    &(&1 |> to_string |> Integer.parse |> elem(0))
+    pipe_1(quote do: to_string |> Integer.parse |> elem(0))
   end
 
   def cg_LChInt(_ctx, _ity) do
-    &(&1 |> to_charlist |> List.first)
+    pipe_1(quote do: to_charlist |> List.first)
   end
 
   def cg_LExternal(_ctx, name) do
@@ -147,5 +170,9 @@ defmodule Idris.Codegen.JSON.Compiler do
   def cg_char(_ctx, "'\\SO'"), do: 0xE
   def cg_char(_ctx, "'\\\\'"), do: ?\\
 
+  defp pipe_1(exp) do
+    ast = quote do: &(&1 |> unquote(exp))
+    {:., [pipe_1: exp], [ast]}
+  end
 
 end
