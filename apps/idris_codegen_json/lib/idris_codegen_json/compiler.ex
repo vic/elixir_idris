@@ -49,6 +49,17 @@ defmodule Idris.Codegen.JSON.Compiler do
     false
   end
 
+  def cg_SCon(_ctx, _lv, _i, "Prelude.List.Nil", _vars = []) do
+    []
+  end
+
+  def cg_SCon(_ctx, _lv, _i, "Prelude.List.::", _vars = [a, b]) do
+    quote do
+      unquote(a) ++ unquote(b)
+    end
+  end
+
+
   def cg_SCon(_ctx, _lv, _i, name, vars) do
     {:{}, [], [String.to_atom(name) | vars]}
   end
