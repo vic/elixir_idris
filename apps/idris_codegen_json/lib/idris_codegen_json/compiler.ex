@@ -91,8 +91,9 @@ defmodule Idris.Codegen.JSON.Compiler do
     {:case, [], [lv, [do: alts]]}
   end
 
-  def cg_SConCase(_ctx, _i, _j, n, ns, exp) do
-    con = cg_SCon(nil, nil, nil, n, ns)
+  def cg_SConCase(ctx, _i, _j, name, args, exp) do
+    args = Enum.map(args, &con_case_arg(&1, ctx))
+    con = {:{}, [], [String.to_atom(name) | args]}
     {:->, [], [[con], exp]}
   end
 
@@ -173,6 +174,18 @@ defmodule Idris.Codegen.JSON.Compiler do
   defp pipe_1(exp) do
     ast = quote do: &(&1 |> unquote(exp))
     {:., [pipe_1: exp], [ast]}
+  end
+
+  defp con_case_arg(var = {_, [], module}, _ctx = {module, _}), do: var
+
+  defp con_case_arg(arg = "{in_" <> i, {module, _}) do
+    {i, "}"} = Integer.parse(i)
+    {:"var#{i}", [var: i, arg: arg], module}
+  end
+
+  defp con_case_arg(arg = "{P_c_" <> _, {module, _}) do
+    arg = String.replace(arg, ~r/{|}/, "")
+    {:"_#{arg}", [], module}
   end
 
 end
